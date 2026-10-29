@@ -235,7 +235,7 @@ class _IOS26ScaffoldState extends State<IOS26Scaffold>
     }
 
     // Determine if toolbar/tab bar's underlying UiKitView should be shown.
-    // Hide native platform views when another route is pushed on top to prevent bleed-through.
+    // Hide native platform views when a page is pushed on top to prevent bleed-through.
     final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? true;
     final isPopping =
         ModalRoute.of(context)?.animation?.status == AnimationStatus.reverse;
@@ -249,8 +249,19 @@ class _IOS26ScaffoldState extends State<IOS26Scaffold>
         heroLeading != null ||
         (widget.actions != null && widget.actions!.isNotEmpty));
 
-    // Show native view only if it's the current route OR it's popping
-    final showNativeView = isCurrentRoute || isPopping;
+    // A dialog, sheet or popup on top leaves this page on stage, dimmed by its
+    // barrier, and its tickers running; only a page taken off stage under an
+    // opaque route stops them. Keep the native views while merely covered, as
+    // the fixed toolbar does: dropping them made the bar vanish behind every
+    // dialog and come back when it closed.
+    // `TickerMode.valuesOf` replaces this, but only exists in Flutter
+    // releases after 3.35; `of` works on every supported version.
+    // ignore: deprecated_member_use
+    final isCoveredOnStage = !isCurrentRoute && TickerMode.of(context);
+
+    // Show native view if it's the current route, it's popping, or only a
+    // dialog, sheet or popup covers it
+    final showNativeView = isCurrentRoute || isPopping || isCoveredOnStage;
 
     // Get brightness and determine text color
     final brightness = MediaQuery.platformBrightnessOf(context);
